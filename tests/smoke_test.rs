@@ -1,7 +1,7 @@
-use gcode_nom::{
+use nom_gcode::{
     // GCode,
     // Mnemonic,
-    parse_gcode
+    parse_gcode,
 };
 
 pub fn exec_smoke_test(src: &str) {

@@ -1,5 +1,6 @@
 extern crate nom;
 
+use std::fmt;
 use thiserror::Error;
 
 mod parse_command;
@@ -24,17 +25,8 @@ pub enum GCodeParseError {
     InvalidComment(String),
 }
 
-// #[cfg(test)]
-// mod tests {
-//     #[test]
-//     fn it_works() {
-//         assert_eq!(2 + 2, 4);
-//     }
-// }
-
 #[derive(Debug, PartialEq, Clone)]
 pub struct Comment<'r>(&'r str);
-// pub type Line = (Option<GCode>, Option<Vec<Comment>>);
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum GCodeLine<'r> {
@@ -62,7 +54,6 @@ pub struct GCode<'r> {
     pub minor: u32,
     args_or_comments: Option<Vec<ArgOrComment<'r>>>,
 }
-
 
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub enum Mnemonic {
@@ -94,25 +85,64 @@ pub enum ArgOrComment<'r> {
 #[derive(Debug, PartialEq, Clone)]
 pub enum Arg<'r> {
     KeyValue(KeyValue),
-    Flag(char),
     Text(&'r str),
 }
 
-#[derive(Debug, PartialEq, Clone)]
-pub struct KeyValue {
-    key: char,
-    value: f32,
+pub type KeyValue = (char, Option<f32>);
+
+impl<'r> fmt::Display for GCode<'r> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use Mnemonic::*;
+
+        let mnemonic = match self.mnemonic {
+            General => 'G',
+            Miscellaneous => 'M',
+            ProgramNumber =>  'P',
+            ToolChange => 'T',
+            Subroutine =>  'O',
+        };
+
+        let mut words = vec![format!("{}{}.{}", mnemonic, self.major, self.minor)];
+
+        let arg_words = self.arguments()
+            .map(|(k, v)| {
+                format!("{}{}", k, v.map(|f| f.to_string()).unwrap_or("".to_string()))
+            });
+
+        words.extend(arg_words);
+
+        if let Some(text) = self.text() {
+            words.push(text.to_string());
+        };
+
+        write!(f, "{}", words.join(" "))
+    }
 }
 
 impl<'r> GCode<'r> {
-    pub fn arguments(&self) -> impl Iterator<Item = &Arg> {
+    fn args_or_comments_iter(&self) -> impl Iterator<Item = &ArgOrComment<'r>> {
         use std::convert::identity;
 
         self.args_or_comments
             .iter()
             .flat_map(identity)
+    }
+
+    pub fn text(&self) -> Option<&'r str> {
+        self.args_or_comments_iter()
+            .find_map(|ac| {
+                if let ArgOrComment::Arg(Arg::Text(text)) = ac {
+                    Some(*text)
+                } else {
+                    None
+                }
+            })
+    }
+
+    pub fn arguments(&self) -> impl Iterator<Item = &KeyValue> {
+        self.args_or_comments_iter()
             .filter_map(|ac| {
-                if let ArgOrComment::Arg(arg)  = ac {
+                if let ArgOrComment::Arg(Arg::KeyValue(arg))  = ac {
                     Some(arg)
                 } else {
                     None

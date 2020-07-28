@@ -11,7 +11,6 @@ use nom::multi::*;
 
 use super::{
     Arg,
-    KeyValue,
     ArgOrComment,
     any_comment,
 };
@@ -76,10 +75,7 @@ fn key_value_arg<'r>(
     map(
         pair(alphabetical_char, ascii_f32), 
         |(k, v): (char, f32)| {
-            let arg = Arg::KeyValue(KeyValue {
-                key: k.to_ascii_uppercase(),
-                value: v,
-            });
+            let arg = Arg::KeyValue((k.to_ascii_uppercase(), Some(v)));
             ArgOrComment::Arg(arg)
         },
     )
@@ -94,8 +90,8 @@ fn flag_arg<'r>(
 
     map(
         alphabetical_char,
-        |c| {
-            let arg = Arg::Flag(c.to_ascii_uppercase());
+        |k| {
+            let arg = Arg::KeyValue((k.to_ascii_uppercase(), None));
             ArgOrComment::Arg(arg)
         },
     )
