@@ -3,6 +3,9 @@ extern crate nom;
 use std::fmt;
 use thiserror::Error;
 
+mod mnemonic;
+pub use mnemonic::*;
+
 mod parse_command;
 pub use parse_command::parse_command;
 
@@ -55,27 +58,6 @@ pub struct GCode<'r> {
     args_or_comments: Option<Vec<ArgOrComment<'r>>>,
 }
 
-#[derive(Debug, PartialEq, Clone, Copy)]
-pub enum Mnemonic {
-    /// Preparatory commands, often telling the controller what kind of motion
-    /// or offset is desired.
-    General,
-    /// Auxilliary commands.
-    Miscellaneous,
-    /// Used to give the current program a unique "name".
-    ProgramNumber,
-    /// Tool selection.
-    ToolChange,
-    /// O-Code: http://linuxcnc.org/docs/html/gcode/o-code.html
-    Subroutine,
-}
-
-pub static G: Mnemonic = Mnemonic::General;
-pub static M: Mnemonic = Mnemonic::Miscellaneous;
-pub static P: Mnemonic = Mnemonic::ProgramNumber;
-pub static T: Mnemonic = Mnemonic::ToolChange;
-pub static O: Mnemonic = Mnemonic::Subroutine;
-
 #[derive(Debug, PartialEq, Clone)]
 pub enum ArgOrComment<'r> {
     Arg(Arg<'r>),
@@ -92,17 +74,9 @@ pub type KeyValue = (char, Option<f32>);
 
 impl<'r> fmt::Display for GCode<'r> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        use Mnemonic::*;
+        let gcode = format!("{}{}.{}", self.mnemonic, self.major, self.minor);
 
-        let mnemonic = match self.mnemonic {
-            General => 'G',
-            Miscellaneous => 'M',
-            ProgramNumber =>  'P',
-            ToolChange => 'T',
-            Subroutine =>  'O',
-        };
-
-        let mut words = vec![format!("{}{}.{}", mnemonic, self.major, self.minor)];
+        let mut words = vec![gcode];
 
         let arg_words = self.arguments()
             .map(|(k, v)| {
