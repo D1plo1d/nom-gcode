@@ -12,7 +12,7 @@ use nom::multi::*;
 use super::{
     Arg,
     ArgOrComment,
-    any_comment,
+    comment,
 };
 
 type ArgOrCommentResult<'r> = IResult<&'r str, ArgOrComment<'r>>;
@@ -21,9 +21,9 @@ pub type ManyArgOrCommentsResult<'r> = IResult<&'r str, Option<Vec<ArgOrComment<
 fn arg_comment<'r>(
 ) -> impl FnMut(&'r str,) -> ArgOrCommentResult<'r> {
     preceded(
-        space0, 
+        space0,
         map(
-            any_comment(),
+            comment,
             |c| ArgOrComment::Comment(c)
         )
     )
@@ -34,7 +34,7 @@ fn many_arg_comments<'r>(
     opt(many1(arg_comment()))
 }
 
-/* 
+/*
  * Conditionally parses a string arg if enabled is true.
  */
 fn opt_string_arg<'r>(
@@ -64,7 +64,7 @@ fn opt_string_arg<'r>(
 fn key_value_arg<'r>(
 ) -> impl FnMut(&'r str,) -> ArgOrCommentResult<'r> {
     let alphabetical_char = verify(
-        anychar, 
+        anychar,
         |c: &char| c.is_alphabetic(),
     );
     let ascii_f32 = map_res(
@@ -73,7 +73,7 @@ fn key_value_arg<'r>(
     );
 
     map(
-        pair(alphabetical_char, ascii_f32), 
+        pair(alphabetical_char, ascii_f32),
         |(k, v): (char, f32)| {
             let arg = Arg::KeyValue((k.to_ascii_uppercase(), Some(v)));
             ArgOrComment::Arg(arg)
@@ -84,7 +84,7 @@ fn key_value_arg<'r>(
 fn flag_arg<'r>(
 ) -> impl FnMut(&'r str,) -> ArgOrCommentResult<'r> {
     let alphabetical_char = verify(
-        anychar, 
+        anychar,
         |c: &char| c.is_alphabetic(),
     );
 
@@ -107,7 +107,7 @@ pub fn parse_args<'r>(
             !string_arg_mcode,
             many1(alt((
                 preceded(
-                    space1, 
+                    space1,
                     alt((key_value_arg(), flag_arg())),
                 ),
                 arg_comment(),

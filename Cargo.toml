@@ -11,7 +11,7 @@ edition = "2018"
 criterion = "0.3"
 
 [[bench]]
-name = "parse_doc_comments"
+name = "parse_gcode"
 harness = false
 
 [dependencies]

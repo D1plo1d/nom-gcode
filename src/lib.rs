@@ -32,15 +32,24 @@ pub enum GCodeParseError {
 pub struct Comment<'r>(&'r str);
 
 #[derive(Debug, PartialEq, Clone)]
+pub enum DocComment<'r> {
+    GCodeFlavor(&'r str),
+    PrintTime(std::time::Duration),
+    FilamentUsed { meters: f64 },
+    LayerHeight { millis: f64 },
+}
+
+#[derive(Debug, PartialEq, Clone)]
 pub enum GCodeLine<'r> {
-    //// The first non-blank line of a file may contain nothing but a percent sign, %, possibly 
-    /// surrounded by white space, and later in the file (normally at the end of the file) there 
+    /// The first non-blank line of a file may contain nothing but a percent sign, %, possibly
+    /// surrounded by white space, and later in the file (normally at the end of the file) there
     /// may be a similar line.
-    /// 
+    ///
     /// http://linuxcnc.org/docs/html/gcode/overview.html
     FileDemarcator,
     GCode(GCode<'r>),
     Comment(Comment<'r>),
+    DocComment(DocComment<'r>),
 }
 
 impl<'r> From<Comment<'r>> for GCodeLine<'r> {

@@ -19,7 +19,7 @@ use super::{
 pub fn parse_command<'r>() -> impl FnMut(&'r str,) ->  IResult<&'r str, GCode<'r>> {
     let number = || {
         map_res(
-            digit1, 
+            digit1,
             |s: &str| s.parse(),
         )
     };

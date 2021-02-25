@@ -9,7 +9,8 @@ use nom::sequence::*;
 use super::{
     parse_command,
     parse_args,
-    any_comment,
+    comment,
+    doc_comment,
     GCodeParseError,
     // GCode,
     GCodeLine,
@@ -41,7 +42,7 @@ pub fn parse_gcode(input: &str) -> Result<(&str, Option<GCodeLine>), GCodeParseE
         .map_err(|_|
             InvalidGCode(original_input.to_string())
         )?;
-    
+
 
     // empty lines without a newline character
     if input.is_empty() {
@@ -56,8 +57,10 @@ pub fn parse_gcode(input: &str) -> Result<(&str, Option<GCodeLine>), GCodeParseE
             alt((
                 // Demarcator (eg. "%")
                 demarcator,
+                // Doc Comment Line (eg. ";TIME:3600")
+                map(doc_comment, |doc| GCodeLine::DocComment(doc)),
                 // Comment Line (eg. "; Comment")
-                map(any_comment(), |c| c.into())
+                map(comment, |comment| GCodeLine::Comment(comment))
             )),
             |line| Some(line),
         ),
