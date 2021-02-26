@@ -103,6 +103,7 @@ impl<'r> fmt::Display for GCode<'r> {
 }
 
 impl<'r> GCode<'r> {
+    // #[inline(always)]
     fn args_or_comments_iter(&self) -> impl Iterator<Item = &ArgOrComment<'r>> {
         use std::convert::identity;
 
@@ -111,6 +112,7 @@ impl<'r> GCode<'r> {
             .flat_map(identity)
     }
 
+    // #[inline(always)]
     pub fn text(&self) -> Option<&'r str> {
         self.args_or_comments_iter()
             .find_map(|ac| {
@@ -122,6 +124,7 @@ impl<'r> GCode<'r> {
             })
     }
 
+    // #[inline(always)]
     pub fn arguments(&self) -> impl Iterator<Item = &KeyValue> {
         self.args_or_comments_iter()
             .filter_map(|ac| {

@@ -30,6 +30,7 @@ const STRING_ARG_MCODES: [u32; 7] = [
     118,
 ];
 
+// #[inline(always)]
 pub fn parse_gcode(input: &str) -> Result<(&str, Option<GCodeLine>), GCodeParseError> {
     let original_input = input;
     let demarcator = map(

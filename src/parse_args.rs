@@ -18,6 +18,7 @@ use super::{
 type ArgOrCommentResult<'r> = IResult<&'r str, ArgOrComment<'r>>;
 pub type ManyArgOrCommentsResult<'r> = IResult<&'r str, Option<Vec<ArgOrComment<'r>>>>;
 
+// #[inline(always)]
 fn arg_comment<'r>(
 ) -> impl FnMut(&'r str,) -> ArgOrCommentResult<'r> {
     preceded(
@@ -29,6 +30,7 @@ fn arg_comment<'r>(
     )
 }
 
+// #[inline(always)]
 fn many_arg_comments<'r>(
 ) -> impl FnMut(&'r str,) -> ManyArgOrCommentsResult<'r> {
     opt(many1(arg_comment()))
@@ -37,6 +39,7 @@ fn many_arg_comments<'r>(
 /*
  * Conditionally parses a string arg if enabled is true.
  */
+// #[inline(always)]
 fn opt_string_arg<'r>(
     enabled: bool,
 ) -> impl FnMut(&'r str,) -> ManyArgOrCommentsResult<'r> {
@@ -61,6 +64,7 @@ fn opt_string_arg<'r>(
     parser
 }
 
+// #[inline(always)]
 fn key_value_arg<'r>(
 ) -> impl FnMut(&'r str,) -> ArgOrCommentResult<'r> {
     let alphabetical_char = verify(
@@ -81,6 +85,7 @@ fn key_value_arg<'r>(
     )
 }
 
+// #[inline(always)]
 fn flag_arg<'r>(
 ) -> impl FnMut(&'r str,) -> ArgOrCommentResult<'r> {
     let alphabetical_char = verify(
@@ -97,6 +102,7 @@ fn flag_arg<'r>(
     )
 }
 
+// #[inline(always)]
 pub fn parse_args<'r>(
     string_arg_mcode: bool,
 ) -> impl FnMut(&'r str,) -> ManyArgOrCommentsResult<'r> {

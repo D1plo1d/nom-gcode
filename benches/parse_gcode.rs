@@ -1,10 +1,11 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use nom_gcode::{DocComment, GCodeLine, Mnemonic, parse_gcode};
+use nom_gcode::{DocComment, GCodeLine, Mnemonic, doc_comment, parse_gcode};
 
 fn criterion_benchmark(c: &mut Criterion) {
-    let doc_comment = ";Filament used: 0.943758m";
-    c.bench_function("parse_doc_comment", |b| b.iter(|| {
-        let gcode_line = parse_gcode(black_box(doc_comment))
+    let doc = ";Filament used: 0.943758m";
+    let mut group = c.benchmark_group("doc_comment");
+    group.bench_function("parse_gcode", |b| b.iter(|| {
+        let gcode_line = parse_gcode(black_box(doc))
             .unwrap()
             .1
             .unwrap();
@@ -15,6 +16,18 @@ fn criterion_benchmark(c: &mut Criterion) {
             panic!("Expected a doc comment");
         }
     }));
+    group.bench_function("doc_comment_only", |b| b.iter(|| {
+        let gcode_line = doc_comment(black_box(doc))
+            .unwrap()
+            .1;
+
+        if let DocComment::FilamentUsed { meters} = gcode_line {
+            assert_eq!(meters, 0.943758);
+        } else {
+            panic!("Expected a doc comment");
+        }
+    }));
+    group.finish();
 
     let g1 = "G1 X132.273 Y137.397 E3.64358";
     let g1_args = vec![
@@ -43,7 +56,6 @@ fn criterion_benchmark(c: &mut Criterion) {
             panic!("Expected a doc comment");
         }
     }));
-
 }
 
 criterion_group!(benches, criterion_benchmark);

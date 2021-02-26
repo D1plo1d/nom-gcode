@@ -16,6 +16,7 @@ use super::{
     O,
 };
 
+// #[inline(always)]
 pub fn parse_command<'r>() -> impl FnMut(&'r str,) ->  IResult<&'r str, GCode<'r>> {
     let number = || {
         map_res(

@@ -14,6 +14,7 @@ use super::{
     DocComment,
 };
 
+// #[inline(always)]
 pub fn parentheses_comment<'r>(input: &'r str) -> IResult<&'r str, &'r str> {
     let parser = preceded(
         char('('),
@@ -31,6 +32,7 @@ pub struct WithComments<'r, O> {
     pub value: O,
 }
 
+// #[inline(always)]
 pub fn with_parentheses_comments<
     'r,
     T: FnMut(&'r str,) -> IResult<&'r str, O>,
@@ -67,6 +69,7 @@ pub fn with_parentheses_comments<
     )
 }
 
+// #[inline(always)]
 pub fn seimcolon_comment<'r>(input: &'r str,) -> IResult<&'r str, &'r str> {
     preceded(
         char(';'),
@@ -74,6 +77,7 @@ pub fn seimcolon_comment<'r>(input: &'r str,) -> IResult<&'r str, &'r str> {
     )(input)
 }
 
+// #[inline(always)]
 pub fn comment<'r>(input: &'r str) -> IResult<&'r str, Comment<'r>> {
     map(
         alt((seimcolon_comment, parentheses_comment)),
@@ -81,6 +85,7 @@ pub fn comment<'r>(input: &'r str) -> IResult<&'r str, Comment<'r>> {
     )(input)
 }
 
+// #[inline(always)]
 pub fn doc_comment<'r>(input: &'r str) -> IResult<&'r str, DocComment<'r>> {
     map_opt(
         preceded(
@@ -108,6 +113,7 @@ pub fn doc_comment<'r>(input: &'r str) -> IResult<&'r str, DocComment<'r>> {
     )(input)
 }
 
+// #[inline(always)]
 pub fn filament_used<'r>(input: &'r str,) -> IResult<&'r str, DocComment<'r>> {
     map_opt(
         terminated(
