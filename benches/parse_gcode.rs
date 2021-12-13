@@ -1,5 +1,5 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use nom_gcode::{DocComment, GCodeLine, Mnemonic, doc_comment, parse_gcode};
+use nom_gcode::{DocComment, GCodeLine, Mnemonic, doc_comment, parse_gcode, parse_command};
 
 fn criterion_benchmark(c: &mut Criterion) {
     let doc = ";Filament used: 0.943758m";
@@ -53,8 +53,24 @@ fn criterion_benchmark(c: &mut Criterion) {
             assert_eq!(args.next(), g1_args.get(2));
             assert_eq!(args.next(), None);
         } else {
-            panic!("Expected a doc comment");
+            panic!("Expected a G1");
         }
+    }));
+
+    c.bench_function("parse_command g1", |b| b.iter(|| {
+        let (_, gcode) = parse_command(black_box(g1))
+            .unwrap();
+
+        assert_eq!(gcode.line_number, None);
+        assert_eq!(gcode.mnemonic, Mnemonic::General);
+        assert_eq!(gcode.major, 1);
+        assert_eq!(gcode.minor, 0);
+
+        // let mut args = gcode.arguments();
+        // assert_eq!(args.next(), g1_args.get(0));
+        // assert_eq!(args.next(), g1_args.get(1));
+        // assert_eq!(args.next(), g1_args.get(2));
+        // assert_eq!(args.next(), None);
     }));
 }
 

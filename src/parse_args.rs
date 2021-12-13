@@ -8,139 +8,107 @@ use nom::combinator::*;
 use nom::sequence::*;
 use nom::multi::*;
 
+use crate::{parentheses_comment, seimcolon_comment, Comment};
 
 use super::{
     Arg,
     ArgOrComment,
-    comment,
 };
 
 type ArgOrCommentResult<'r> = IResult<&'r str, ArgOrComment<'r>>;
 pub type ManyArgOrCommentsResult<'r> = IResult<&'r str, Option<Vec<ArgOrComment<'r>>>>;
 
-// #[inline(always)]
-fn arg_comment<'r>(
-) -> impl FnMut(&'r str,) -> ArgOrCommentResult<'r> {
-    preceded(
-        space0,
-        map(
-            comment,
-            |c| ArgOrComment::Comment(c)
-        )
-    )
-}
-
-// #[inline(always)]
-fn many_arg_comments<'r>(
-) -> impl FnMut(&'r str,) -> ManyArgOrCommentsResult<'r> {
-    opt(many1(arg_comment()))
-}
-
 /*
  * Conditionally parses a string arg if enabled is true.
  */
 // #[inline(always)]
-fn opt_string_arg<'r>(
-    enabled: bool,
-) -> impl FnMut(&'r str,) -> ManyArgOrCommentsResult<'r> {
-    let parser = cond(
-        enabled,
-        opt(preceded(
+fn string_arg<'r>(input: &'r str) -> ArgOrCommentResult<'r> {
+    map(
+        preceded(
             space1,
             escaped(
                 is_not("\n\r;("),
                 '\\',
                 one_of("(); \t\n\\"),
             ),
-        ))
-    );
-
-    let parser = map(parser, |filename| {
-        filename.flatten().map(|f| {
-            vec![ArgOrComment::Arg(Arg::Text(f))]
-        })
-    });
-
-    parser
+        ),
+        |s| ArgOrComment::Arg(Arg::Text(s)),
+    )(input)
 }
 
 // #[inline(always)]
-fn key_value_arg<'r>(
-) -> impl FnMut(&'r str,) -> ArgOrCommentResult<'r> {
-    let alphabetical_char = verify(
-        anychar,
-        |c: &char| c.is_alphabetic(),
-    );
-    let ascii_f32 = map_res(
-        is_not(" \t\n\r;("),
-        |s: &str| s.parse(),
-    );
-
+fn key_value_arg<'r>(input: &'r str) -> ArgOrCommentResult<'r> {
     map(
-        pair(alphabetical_char, ascii_f32),
-        |(k, v): (char, f32)| {
-            let arg = Arg::KeyValue((k.to_ascii_uppercase(), Some(v)));
+        pair(
+            verify(
+                anychar,
+                |c: &char| c.is_alphabetic(),
+            ),
+            opt(map_res(
+                is_not(" \t\n\r;("),
+                |s: &str| s.parse(),
+            )),
+        ),
+        |(k, v): (char, Option<f32>)| {
+            let arg = Arg::KeyValue((k.to_ascii_uppercase(), v));
             ArgOrComment::Arg(arg)
         },
-    )
+    )(input)
 }
 
-// #[inline(always)]
-fn flag_arg<'r>(
-) -> impl FnMut(&'r str,) -> ArgOrCommentResult<'r> {
-    let alphabetical_char = verify(
-        anychar,
-        |c: &char| c.is_alphabetic(),
-    );
+fn combine_args_and_comments<'r>(
+    parser_outputs: (Vec<ArgOrComment<'r>>, Option<&'r str>),
+) -> Option<Vec<ArgOrComment<'r>>> {
+    let (mut args_or_comments, final_comment) = parser_outputs;
 
-    map(
-        alphabetical_char,
-        |k| {
-            let arg = Arg::KeyValue((k.to_ascii_uppercase(), None));
-            ArgOrComment::Arg(arg)
-        },
-    )
+    if let Some(final_comment) = final_comment {
+        args_or_comments.push(
+            ArgOrComment::Comment(Comment(final_comment)),
+        );
+    }
+
+    if args_or_comments.is_empty() {
+        None
+    } else {
+        Some(args_or_comments)
+    }
 }
 
 // #[inline(always)]
 pub fn parse_args<'r>(
     string_arg_mcode: bool,
-) -> impl FnMut(&'r str,) -> ManyArgOrCommentsResult<'r> {
-    let parser = tuple((
-        many_arg_comments(),
-        // Add the rest of the args and comments
-        opt(cond(
-            !string_arg_mcode,
-            many1(alt((
-                preceded(
-                    space1,
-                    alt((key_value_arg(), flag_arg())),
-                ),
-                arg_comment(),
-            ))),
-        )),
+    input: &'r str,
+) -> ManyArgOrCommentsResult<'r> {
+    if string_arg_mcode {
         // Add a Text argument for the string arg of certain MCodes (eg. M28 teg.gcode)
-        opt_string_arg(string_arg_mcode),
-        many_arg_comments(),
-    ));
-
-    let parser = map(
-        parser,
-        |(t0, t1, t2, t3)| {
-            let args_or_comments = vec![t0, t1.flatten(), t2, t3];
-            let mut iter = args_or_comments
-                .into_iter()
-                .filter_map(|ac| ac)
-                .flatten()
-                .peekable();
-
-            if iter.peek().is_none() {
-                None
-            } else {
-                Some(iter.collect())
-            }
-        },
-    );
-
-    parser
+        map(
+            tuple((
+                many0(
+                    alt((
+                        map(parentheses_comment, |s| ArgOrComment::Comment(Comment(s))),
+                        string_arg,
+                    )),
+                ),
+                opt(seimcolon_comment),
+            )),
+            combine_args_and_comments,
+        )(input)
+    } else {
+        map(
+            tuple((
+                many0(
+                    alt((
+                        map(parentheses_comment, |s| ArgOrComment::Comment(Comment(s))),
+                        // Add the rest of the args and comments
+                        preceded(
+                            space1,
+                            key_value_arg,
+                        ),
+                    )),
+                ),
+                opt(seimcolon_comment),
+            )),
+            combine_args_and_comments,
+        )(input)
+    }
 }

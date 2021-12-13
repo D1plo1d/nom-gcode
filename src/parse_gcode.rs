@@ -75,7 +75,7 @@ pub fn parse_gcode(input: &str) -> Result<(&str, Option<GCodeLine>), GCodeParseE
      * Parse the GCode command (eg. this would parse "G1" out of "G1 X10")
      */
 
-    let (input, mut gcode) = parse_command()(input)
+    let (input, mut gcode) = parse_command(input)
         .map_err(|_|
             GCodeParseError::InvalidGCode(original_input.to_string())
         )?;
@@ -89,11 +89,10 @@ pub fn parse_gcode(input: &str) -> Result<(&str, Option<GCodeLine>), GCodeParseE
         && gcode.minor == 0
         && STRING_ARG_MCODES.contains(&gcode.major);
 
-    let mut args_parser = parse_args(
+    let (input, args_or_comments) = parse_args(
         string_arg_mcode,
-    );
-
-    let (input, args_or_comments) = args_parser(input)
+        input,
+    )
         .map_err(|_| InvalidArguments(original_input.to_string()))?;
 
     gcode.args_or_comments = args_or_comments;

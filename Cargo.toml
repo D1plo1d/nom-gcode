@@ -15,5 +15,5 @@ name = "parse_gcode"
 harness = false
 
 [dependencies]
-nom = "6.0.0-alpha.1"
+nom = "7.1.0"
 thiserror = "1.0.20"
