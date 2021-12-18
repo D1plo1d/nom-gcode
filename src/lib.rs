@@ -11,6 +11,7 @@ pub use parse_command::parse_command;
 
 mod parse_args;
 pub use parse_args::parse_args;
+pub use parse_args::parse_kv_arg;
 
 mod parse_comments;
 pub use parse_comments::*;
@@ -69,14 +70,9 @@ pub struct GCode<'r> {
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum ArgOrComment<'r> {
-    Arg(Arg<'r>),
-    Comment(Comment<'r>),
-}
-
-#[derive(Debug, PartialEq, Clone)]
-pub enum Arg<'r> {
     KeyValue(KeyValue),
-    Text(&'r str),
+    TextArg(&'r str),
+    Comment(Comment<'r>),
 }
 
 pub type KeyValue = (char, Option<f32>);
@@ -116,7 +112,7 @@ impl<'r> GCode<'r> {
     pub fn text(&self) -> Option<&'r str> {
         self.args_or_comments_iter()
             .find_map(|ac| {
-                if let ArgOrComment::Arg(Arg::Text(text)) = ac {
+                if let ArgOrComment::TextArg(text) = ac {
                     Some(*text)
                 } else {
                     None
@@ -128,7 +124,7 @@ impl<'r> GCode<'r> {
     pub fn arguments(&self) -> impl Iterator<Item = &KeyValue> {
         self.args_or_comments_iter()
             .filter_map(|ac| {
-                if let ArgOrComment::Arg(Arg::KeyValue(arg))  = ac {
+                if let ArgOrComment::KeyValue(arg)  = ac {
                     Some(arg)
                 } else {
                     None

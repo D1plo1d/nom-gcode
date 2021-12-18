@@ -7,11 +7,11 @@ use nom::branch::*;
 use nom::combinator::*;
 use nom::sequence::*;
 use nom::multi::*;
+use nom::AsChar;
 
-use crate::{parentheses_comment, seimcolon_comment, Comment};
+use crate::{seimcolon_comment, Comment, comment};
 
 use super::{
-    Arg,
     ArgOrComment,
 };
 
@@ -32,27 +32,21 @@ fn string_arg<'r>(input: &'r str) -> ArgOrCommentResult<'r> {
                 one_of("(); \t\n\\"),
             ),
         ),
-        |s| ArgOrComment::Arg(Arg::Text(s)),
+        ArgOrComment::TextArg
     )(input)
 }
 
-// #[inline(always)]
+#[inline(always)]
 fn key_value_arg<'r>(input: &'r str) -> ArgOrCommentResult<'r> {
     map(
         pair(
-            verify(
-                anychar,
-                |c: &char| c.is_alphabetic(),
-            ),
+            satisfy(AsChar::is_alpha),
             opt(map_res(
                 is_not(" \t\n\r;("),
                 |s: &str| s.parse(),
             )),
         ),
-        |(k, v): (char, Option<f32>)| {
-            let arg = Arg::KeyValue((k.to_ascii_uppercase(), v));
-            ArgOrComment::Arg(arg)
-        },
+        ArgOrComment::KeyValue,
     )(input)
 }
 
@@ -83,27 +77,24 @@ pub fn parse_args<'r>(
         // Add a Text argument for the string arg of certain MCodes (eg. M28 teg.gcode)
         map(
             tuple((
-                many0(
-                    alt((
-                        map(parentheses_comment, |s| ArgOrComment::Comment(Comment(s))),
-                        string_arg,
-                    )),
+                    opt(map(comment, |c| ArgOrComment::Comment(c))),
+                    opt(string_arg),
+                    opt(map(comment, |c| ArgOrComment::Comment(c))),
                 ),
-                opt(seimcolon_comment),
-            )),
-            combine_args_and_comments,
+            ),
+            |(c1, arg, c2)| Some(vec![c1, arg, c2].into_iter().flatten().collect()),
         )(input)
     } else {
         map(
             tuple((
                 many0(
                     alt((
-                        map(parentheses_comment, |s| ArgOrComment::Comment(Comment(s))),
                         // Add the rest of the args and comments
                         preceded(
                             space1,
                             key_value_arg,
                         ),
+                        map(comment, |c| ArgOrComment::Comment(c)),
                     )),
                 ),
                 opt(seimcolon_comment),
@@ -111,4 +102,26 @@ pub fn parse_args<'r>(
             combine_args_and_comments,
         )(input)
     }
+}
+
+
+// #[inline(always)]
+pub fn parse_kv_arg<'r>(
+    input: &'r str,
+) -> ArgOrCommentResult<'r> {
+    // if string_arg_mcode {
+    //     // Add a Text argument for the string arg of certain MCodes (eg. M28 teg.gcode)
+    //     alt((
+    //         string_arg,
+    //         map(comment, |c| ArgOrComment::Comment(c)),
+    //     ))(input)
+    // } else {
+    alt((
+        // Add the rest of the args and comments
+        preceded(
+            space1,
+            key_value_arg,
+        ),
+        map(comment, ArgOrComment::Comment),
+    ))(input)
 }

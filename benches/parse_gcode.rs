@@ -1,5 +1,5 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use nom_gcode::{DocComment, GCodeLine, Mnemonic, doc_comment, parse_gcode, parse_command};
+use nom_gcode::{DocComment, GCodeLine, Mnemonic, doc_comment, parse_gcode, parse_command, parse_args, ArgOrComment, parse_kv_arg};
 
 fn criterion_benchmark(c: &mut Criterion) {
     let doc = ";Filament used: 0.943758m";
@@ -71,6 +71,59 @@ fn criterion_benchmark(c: &mut Criterion) {
         // assert_eq!(args.next(), g1_args.get(1));
         // assert_eq!(args.next(), g1_args.get(2));
         // assert_eq!(args.next(), None);
+    }));
+    c.bench_function("parse_command parse_args g1", |b| b.iter(|| {
+        let (input, gcode) = parse_command(black_box(g1))
+            .unwrap();
+
+        assert_eq!(gcode.line_number, None);
+        assert_eq!(gcode.mnemonic, Mnemonic::General);
+        assert_eq!(gcode.major, 1);
+        assert_eq!(gcode.minor, 0);
+
+        let (_, args) = parse_args(false, input).unwrap();
+
+        let mut args = args.unwrap()
+            .into_iter()
+            .filter_map(|arg| {
+                if let ArgOrComment::KeyValue(key_value) = arg {
+                    Some(key_value)
+                } else {
+                    None
+                }
+            });
+
+        assert_eq!(args.next().as_ref(), g1_args.get(0));
+        assert_eq!(args.next().as_ref(), g1_args.get(1));
+        assert_eq!(args.next().as_ref(), g1_args.get(2));
+        assert_eq!(args.next(), None);
+    }));
+    c.bench_function("parse_command parse_kv_arg loop g1", |b| b.iter(|| {
+        let (mut input, gcode) = parse_command(black_box(g1))
+            .unwrap();
+
+        assert_eq!(gcode.line_number, None);
+        assert_eq!(gcode.mnemonic, Mnemonic::General);
+        assert_eq!(gcode.major, 1);
+        assert_eq!(gcode.minor, 0);
+
+
+        let mut arg_count = 0;
+        loop {
+            let arg = match parse_kv_arg(input) {
+                Ok((rem, ArgOrComment::KeyValue(arg))) => {
+                    input = rem;
+                    Some(arg)
+                }
+                Ok(_) => continue,
+                Err(_) => break,
+            };
+
+            assert_eq!(arg.as_ref(), g1_args.get(arg_count));
+            arg_count += 1;
+        }
+
+        assert_eq!(arg_count, 3)
     }));
 }
 
