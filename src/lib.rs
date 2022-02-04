@@ -30,7 +30,9 @@ pub enum GCodeParseError {
 }
 
 #[derive(Debug, PartialEq, Clone)]
-pub struct Comment<'r>(&'r str);
+pub struct Comment<'r>(
+    pub &'r str
+);
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum DocComment<'r> {
